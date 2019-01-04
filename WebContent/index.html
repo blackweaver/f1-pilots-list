@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Fórmula 1 - Plantilla de pilotos 2017</title>
+<style type="text/css">
+    body { font-family: calibri, arial, san-serif; font-size: 1em; }
+    h1 { text-align: center; }
+    table { width: 100%; text-align: left; margin: 0 auto; max-width: 1280px; }
+    form { width: 100%; text-align: left; margin: 0 auto; max-width: 1280px; }
+</style>
+</head>
+<body ng-app="dataApp" ng-controller="dataCtrl">
+    <h1>Fórmula 1 - Plantilla 2017</h1>
+    
+    <!-- Formulario de formato Angular que envía los datos via post a un archivo Java -JSP- -->
+    
+    <form action="getData.jsp" method="post" name="pilot">
+        <input type="hidden" name="id" ng-model="form.id" value="{{id}}">
+        Piloto <input type="text" name="piloto" ng-model="form.piloto" size="20" value="{{piloto}}">
+        Equipo <input type="text" name="equipo" ng-model="form.equipo" size="15" value="{{equipo}}">
+        Motor <input type="text" name="motor" ng-model="form.motor" size="15" value="{{motor}}">
+        País <input type="text" name="pais" ng-model="form.pais" size="20" value="{{pais}}">
+        Edad <input type="text" name="edad" ng-model="form.edad" size="2" value="{{edad}}">
+        
+        <!-- Llamo a la función en Angular para guardar los datos del piloto editado -->
+        
+        <input type="button" value="Guardar" ng-click="save()">
+        
+        <!-- Llamo a la función en Angular para crear un nuevo piloto a partir de los datos ingresados -->
+        
+        <input type="button" value="Crear nuevo" ng-click="createNew()">
+    </form>
+    <hr>
+    <table>
+    	<tr>
+    		<th>Piloto</th>
+    		<th>Equipo</th>
+    		<th>Motor</th>
+    		<th>País</th>
+            <th colspan="3">Edad</th>
+    	</tr>
+    	
+    	<!-- Iteración de Angular para cada uno de los piltos -->
+    	
+    	<tr ng-repeat="piloto in content">
+    		<td>{{piloto.piloto}}</td>
+    		<td>{{piloto.equipo}}</td>
+    		<td>{{piloto.motor}}</td>
+    		<td>{{piloto.pais}}</td>
+            <td>{{piloto.edad}}</td>
+            <!-- Botón para llenar los campos del formulario con el piloto en cuestión con el fin de editarlo -->
+            
+            <td><button data-id="{{piloto.id}}" data-piloto="{{piloto.piloto}}" data-equipo="{{piloto.equipo}}" data-motor="{{piloto.motor}}" data-pais="{{piloto.pais}}" data-edad={{piloto.edad}} ng-click="edit($event)">Editar</button></td>
+            
+            <!-- Botón para borrar el piloto en cuestión a partir de su ID -->
+            
+    		<td><button data-id="{{piloto.id}}" data-piloto="{{piloto.piloto}}" ng-click="delete($event)">Borrar</button></td>
+    	</tr>
+    </table>
+    <!-- Coloco el javascript al final del DOM -->
+    
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.js"></script>
+    <script type="text/javascript">
+    	//Especifico un nombre para el módulo del ámbito que interviene Angular
+    	var myApp = angular.module("dataApp",[]);
+    	
+       //Especifico un controlador para el manejo del contenido dentro de un sector del código
+        myApp.controller("dataCtrl",function($scope,$http){
+			//Defino el objeto para almacenar los datos del formulario
+            $scope.form = {};
+			//Defino por defecto el estado inactivo del botón de guardado
+            $scope.status = false;
+            //Función para guardar los datos del piloto -los que recibe por parámetro- editado en el objeto form
+            $scope.edit = function(e){    
+                $scope.form.type = "update";
+                $scope.form.id = e.target.dataset.id;
+                $scope.form.piloto = e.target.dataset.piloto;
+                $scope.form.equipo = e.target.dataset.equipo;
+                $scope.form.motor = e.target.dataset.motor;
+                $scope.form.pais = e.target.dataset.pais;
+                $scope.form.edad = e.target.dataset.edad;
+            }
+			//Función que borra pilotos, recibe por parámetro el ID correspondiente
+            $scope.delete = function(e){
+				//Confirmación previa
+            	var c = confirm("¿Deseas borrar a " + e.target.dataset.piloto + "?"); 
+				//Si confirmo, llamo al método HTTP con el método POST y la URL del archivo JSP que hace de puente para la consulta de borrado en la DB.
+            	if(c == true) {
+            		$http({
+	                    method: 'POST',
+	                    url: 'getQuery.jsp',
+	                    params: { id : e.target.dataset.id, type : 'delete' },
+	                    headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+	                }).success(function(data){
+	                	//De hacerlo con éxito, importo nuevamente el contenido de los pilotos, el que ahora tendra un piloto menos -el que borré-
+	                    $scope.importar();
+	                });
+            	}   
+            }
+			//Función que crea un piloto nuevo, especifica por defecto el ID 0 y los campos vacíos
+            $scope.createNew = function(e){
+                 $scope.form.type = "create";
+                 $scope.form.id = pilot.id.value = 0;
+                 $scope.form.piloto = pilot.piloto.value = "";
+                 $scope.form.equipo = pilot.equipo.value = "";
+                 $scope.form.motor = pilot.motor.value = "";
+                 $scope.form.pais = pilot.pais.value = "";
+                 $scope.form.edad = pilot.edad.value = "";
+            } 
+			//Función que guarda los datos editados
+            $scope.save = function(){
+				//Activo el formulario para que permita guardar datos
+                $scope.status = true;
+				//Validardor que recorre el objeto form para asegurarme que existan datos reales antes de enviarlos
+                for (var field in $scope.form){
+                    //Si el campo tiene menos de dos caractres o y no es el campo ID, mando una alerta de invalidación
+                	if($scope.form[field].length < 2 && field != "id"){
+                    	alert("Completa el campo " + field);
+                    	//Dejo inactivo el guardado del formulario
+                        $scope.status = false;
+                    	//Corto el proceso de la iteración
+                        break;
+                    }
+                }
+				//Si el estado de guardado del formulario sigue true -activo-, llamo al método HTTP con el método POST para actualizar o guardar la nueva información
+                if($scope.status){
+                    $http({
+                        method: 'POST',
+                        url: 'getQuery.jsp',
+                        params: $scope.form,
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'}
+                    }).success(function(data){
+                    	//De hacerlo con éxito, importo nuevamente el contenido de los pilotos, el que ahora tendra actualizada la información
+                        $scope.importar();
+                    });
+                }
+            }
+           //Función para importar la información de la tabla pilotos
+            $scope.importar = function(){
+        	   //Llamo al método get del objeto HTTP pasando como parámetro la URL del archivo JSP que realiza las consultas correspondientes para listar el contenido
+            	$http.get("getData.jsp").success(function(data){
+            		//Cargo la propiedad "content" con la lista de pilotos en formato Json.
+                    $scope.content = data.pilotos;
+            	});
+            }
+            //Importo la lista de pilotos por primera vez
+            $scope.importar();
+            //Configuro el formulario por defecto, vacío y listo para agregar un nuevo piloto
+            $scope.createNew();
+            
+        });
+    </script>
+</body>
+</html>
